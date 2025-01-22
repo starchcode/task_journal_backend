@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 import models
 import schemas
 import dependencies
@@ -13,6 +13,14 @@ async def create_questions(task: schemas.TaskBase, db:db):
                                description= task.description,
                                deadline=task.deadline,
                                )
-    db.add(new_task)
-    db.commit()
-    db.refresh(new_task)
+
+    try:
+        # Add to session and commit
+        db.add(new_task)
+        db.commit()
+        db.refresh(new_task)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create task: {str(e)}")  # Include exception message
+    
+    return new_task
