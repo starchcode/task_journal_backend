@@ -7,6 +7,13 @@ app = APIRouter()
 
 db = dependencies.db_dependency
 
+@app.get('/tasks')
+async def get_tasks(db:db):
+    result = db.query(models.Tasks).all()
+
+    return result
+
+
 @app.post("/tasks")
 async def create_questions(task: schemas.TaskBase, db:db):
     new_task = models.Tasks(title=task.title,
