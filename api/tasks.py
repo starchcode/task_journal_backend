@@ -9,7 +9,8 @@ db = dependencies.db_dependency
 
 @app.get('/tasks')
 async def get_tasks(db:db):
-    result = db.query(models.Tasks).order_by(models.Tasks.deadline.asc()).all()
+
+    result = db.query(models.Tasks).order_by(models.Tasks.deadline.asc(), models.Tasks.id.asc()).all()
 
     return result
 
