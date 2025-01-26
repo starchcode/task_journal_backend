@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 import html
 from datetime import date
@@ -13,6 +13,12 @@ class TaskBase(BaseModel):
         super().__init__(**data)
         if self.description:
             self.description = html.escape(self.description)  # Sanitization
+
+    @field_validator('deadline')
+    def check_deadline(cls, v):
+        if v and v < date.today():
+            raise ValueError('Deadline cannot be in the past')
+        return v
 
 
 class TaskUpdate(BaseModel):
