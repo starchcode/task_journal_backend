@@ -13,3 +13,7 @@ class TaskBase(BaseModel):
         super().__init__(**data)
         if self.description:
             self.description = html.escape(self.description)  # Sanitization
+
+
+class TaskUpdate(BaseModel):
+    is_completed: bool

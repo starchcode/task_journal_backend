@@ -33,13 +33,13 @@ async def create_questions(task: schemas.TaskBase, db:db):
     return new_task
 
 @app.patch("/tasks/{task_id}")
-async def update_task(task_id: int, is_completed: bool, db: db):
+async def update_task(task_id: int, request: schemas.TaskUpdate, db: db):
     task = db.get(models.Tasks, task_id)
 
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    task.is_completed = is_completed
+    setattr(task, "is_completed", request.is_completed)
 
     try:
         db.commit()
