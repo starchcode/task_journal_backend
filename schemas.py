@@ -4,7 +4,7 @@ import html
 from datetime import date
 
 class TaskBase(BaseModel):
-    title: str = Field(..., min_length=3, max_length=255)
+    title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=500)
     deadline: Optional[date] = None 
     is_completed: Optional[bool] = None 
