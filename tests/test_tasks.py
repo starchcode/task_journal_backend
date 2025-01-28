@@ -90,3 +90,58 @@ def test_create_task_with_invalid_data(client):
 
     assert response.status_code == 422
     assert "detail" in response.json()
+
+
+def test_update_task(client, test_db):
+    task_data = {
+        "title": "Test Task",
+        "description": "This is a test task.",
+        "deadline": date.today(),
+        "is_completed": False
+    }
+
+    task = models.Tasks(**task_data)
+    test_db.add(task)
+    test_db.commit()
+    test_db.refresh(task)
+
+    update_data = {"is_completed": True}
+    response = client.patch(f"/tasks/{task.id}", json=update_data)
+
+    assert response.status_code == 200
+    updated_task = response.json()
+    assert updated_task["id"] == task.id
+    assert updated_task["is_completed"] is True
+
+    db_task = test_db.query(models.Tasks).filter(models.Tasks.id == task.id).first()
+    assert db_task.is_completed is True
+
+def test_update_task_not_found(client, test_db):
+    non_existent_task_id = 999
+
+    update_data = {"is_completed": True}
+    response = client.patch(f"/tasks/{non_existent_task_id}", json=update_data)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Task not found"}
+
+def test_update_task_invalid_data(client, test_db):
+    # Given: A task already created in the database
+    task_data = {
+        "title": "Test Task",
+        "description": "This is a test task.",
+        "deadline": date.today(),
+        "is_completed": False
+    }
+
+    # Create the task
+    task = models.Tasks(**task_data)
+    test_db.add(task)
+    test_db.commit()
+    test_db.refresh(task)
+
+    update_data = {"non_existing_field": "value"}
+    response = client.patch(f"/tasks/{task.id}", json=update_data)
+
+    assert response.status_code == 422
+    assert "detail" in response.json()
