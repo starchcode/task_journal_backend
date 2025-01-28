@@ -145,3 +145,33 @@ def test_update_task_invalid_data(client, test_db):
 
     assert response.status_code == 422
     assert "detail" in response.json()
+
+
+
+def test_delete_task(client, test_db):
+    task_data = {
+        "title": "Task to Delete",
+        "description": "This task will be deleted",
+        "deadline": date.today(),
+        "is_completed": False
+    }
+
+    task = models.Tasks(**task_data)
+    test_db.add(task)
+    test_db.commit()
+    test_db.refresh(task)
+
+    response = client.delete(f"/tasks/{task.id}")
+
+    assert response.status_code == 200
+    assert response.json() == {"detail": "Task deleted successfully"}
+
+    deleted_task = test_db.query(models.Tasks).filter(models.Tasks.id == task.id).first()
+    assert deleted_task is None  
+
+def test_delete_task_not_found(client, test_db):
+    non_existing_task_id = 9999  
+    response = client.delete(f"/tasks/{non_existing_task_id}")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Task not found"}
