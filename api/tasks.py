@@ -36,37 +36,43 @@ async def get_tasks(db: db):
     return jsonable_encoder(result)  # Ensure JSON serializability
 
 @app.get("/tasks/search")
-async def search_tasks(db:db, query: str, is_completed: Optional[bool] = None):
+async def search_tasks(db: db, query: str, search_by: str = "title", is_completed: Optional[bool] = None):
     query_embedding_1 = await generate_embedding(query)
     query_embedding = '[' + ','.join(map(str, query_embedding_1)) + ']'
 
-    query_stmt = db.query(
-        models.Tasks,
-        func.cosine_distance(models.Tasks.title_embedding, query_embedding).label("title_similarity"),
-        func.cosine_distance(models.Tasks.description_embedding, query_embedding).label("description_similarity")
-    )
-
+    if search_by == "title":
+        query_stmt = db.query(
+            models.Tasks,
+            func.cosine_distance(models.Tasks.title_embedding, query_embedding).label("similarity")
+        )
+    elif search_by == "description":
+        query_stmt = db.query(
+            models.Tasks,
+            func.cosine_distance(models.Tasks.description_embedding, query_embedding).label("similarity")
+        )
+    else:
+        raise HTTPException(status_code=400, detail="Invalid search_by value. Use 'title' or 'description'.")
 
     if is_completed is not None:
         query_stmt = query_stmt.filter(models.Tasks.is_completed == is_completed)
 
     results = query_stmt.all()
 
-    tasks = [
-        {
+    tasks = []
+    for row in results:
+        task = row[0] 
+        similarity = row[1] 
+
+        tasks.append({
             "id": task.id,
             "title": task.title,
             "description": task.description,
             "deadline": task.deadline,
             "is_completed": task.is_completed,
-            "title_similarity": title_similarity,
-            "description_similarity": description_similarity,
-            "min_similarity": min(title_similarity, description_similarity)
-        }
-        for task, title_similarity, description_similarity in results
-    ]
+            "similarity": similarity
+        })
 
-    tasks = sorted(tasks, key=lambda x: x["min_similarity"])
+    tasks = sorted(tasks, key=lambda x: x["similarity"])
 
     return jsonable_encoder(tasks)
 
