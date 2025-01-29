@@ -74,10 +74,10 @@ async def search_tasks(db:db, query: str, is_completed: Optional[bool] = None):
 @app.post("/tasks")
 async def create_questions(task: schemas.TaskBase, db:db):
     title_embedding = await generate_embedding(task.title)
-    description_embedding = []
 
-    if task.description:
-        description_embedding = await generate_embedding(task.description)
+    description_text = task.description if task.description else ""
+    description_embedding = await generate_embedding(description_text)
+
 
     new_task = models.Tasks(title=task.title,
                             description= task.description,
