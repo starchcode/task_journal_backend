@@ -4,6 +4,8 @@ import schemas
 import dependencies
 from openai import OpenAI
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy import func
+from typing import Optional
 
 client = OpenAI()
 app = APIRouter()
@@ -32,6 +34,41 @@ async def get_tasks(db: db):
     result = [dict(task._mapping) for task in tasks]  
 
     return jsonable_encoder(result)  # Ensure JSON serializability
+
+@app.get("/tasks/search")
+async def search_tasks(db:db, query: str, is_completed: Optional[bool] = None):
+    query_embedding_1 = await generate_embedding(query)
+    query_embedding = '[' + ','.join(map(str, query_embedding_1)) + ']'
+
+    query_stmt = db.query(
+        models.Tasks,
+        func.cosine_distance(models.Tasks.title_embedding, query_embedding).label("title_similarity"),
+        func.cosine_distance(models.Tasks.description_embedding, query_embedding).label("description_similarity")
+    )
+
+
+    if is_completed is not None:
+        query_stmt = query_stmt.filter(models.Tasks.is_completed == is_completed)
+
+    results = query_stmt.all()
+
+    tasks = [
+        {
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "deadline": task.deadline,
+            "is_completed": task.is_completed,
+            "title_similarity": title_similarity,
+            "description_similarity": description_similarity,
+            "min_similarity": min(title_similarity, description_similarity)
+        }
+        for task, title_similarity, description_similarity in results
+    ]
+
+    tasks = sorted(tasks, key=lambda x: x["min_similarity"])
+
+    return jsonable_encoder(tasks)
 
 
 @app.post("/tasks")
