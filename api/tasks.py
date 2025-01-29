@@ -120,8 +120,16 @@ async def update_task(task_id: int, request: schemas.TaskUpdate, db: db):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to update task: {str(e)}")
+        
+    task_dict = {
+        "id":task.id,
+        "title":task.title,
+        "description":task.description,
+        "deadline":task.deadline,
+        "is_completed":task.is_completed
+        }
 
-    return task
+    return jsonable_encoder(task_dict)
 
 @app.delete("/tasks/{task_id}")
 async def destroy_task(task_id: int, db: db):
