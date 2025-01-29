@@ -3,10 +3,10 @@ import models
 import schemas
 import dependencies
 from openai import OpenAI
+from fastapi.encoders import jsonable_encoder
+
 client = OpenAI()
-
 app = APIRouter()
-
 db = dependencies.db_dependency
 
 # Helper function to generate embeddings using OpenAI
@@ -19,16 +19,19 @@ async def generate_embedding(text: str) -> list:
     return response.data[0].embedding
 
 @app.get('/tasks')
-async def get_tasks(db:db):
+async def get_tasks(db: db):
+    tasks = db.query(
+        models.Tasks.id,
+        models.Tasks.title,
+        models.Tasks.description,
+        models.Tasks.deadline,
+        models.Tasks.is_completed
+    ).order_by(models.Tasks.deadline.asc(), models.Tasks.id.asc()).all()
 
-    result = db.query(models.Tasks.id,
-                      models.Tasks.title,
-                      models.Tasks.description,
-                      models.Tasks.deadline,
-                      models.Tasks.is_completed
-                      ).order_by(models.Tasks.deadline.asc(), models.Tasks.id.asc()).all()
+    # Convert to a list of dictionaries
+    result = [dict(task._mapping) for task in tasks]  
 
-    return result
+    return jsonable_encoder(result)  # Ensure JSON serializability
 
 
 @app.post("/tasks")
@@ -54,7 +57,16 @@ async def create_questions(task: schemas.TaskBase, db:db):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to create task: {str(e)}")  # Include exception message
     
-    return new_task
+    task_dict = {
+        "id": new_task.id,
+        "title": new_task.title,
+        "description": new_task.description,
+        "deadline": new_task.deadline,
+        "is_completed": new_task.is_completed
+        }
+
+    return jsonable_encoder(task_dict)
+
 
 @app.patch("/tasks/{task_id}")
 async def update_task(task_id: int, request: schemas.TaskUpdate, db: db):
